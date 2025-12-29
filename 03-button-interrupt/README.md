@@ -11,6 +11,7 @@ This project was created for learning and testing purposes.
 - Button input using GPIO interrupt
 - Controls LED using GPIO interrupt callback
 - LED toggles when button is pressed
+- Printf message to the serial using printk when button pressed
 
 ## Hardware
 - Nordic Semiconductor development board

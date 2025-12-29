@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/printk.h>
 
 /* 10 minutes in ms */
 #define SLEEP_TIME_MS   10*60*1000
@@ -69,4 +70,7 @@ int main(void)
 void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     gpio_pin_toggle_dt(&led);
+	// Using printk here only as an exercise, it is a bad practice for a real projects.
+	// Use the logging system instead!
+	printk("Button pressed!\n");
 }
