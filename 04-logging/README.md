@@ -22,3 +22,8 @@ This example demonstrates the basic steps required to use the Zephyr logging sys
 - Include the logging header in the source code:
   ```c
   #include <zephyr/logging/log.h>
+
+## References
+
+Nordic Semiconductor — Zephyr Logging System Documentation
+https://docs.nordicsemi.com/bundle/ncs-latest/page/zephyr/services/logging/index.html
