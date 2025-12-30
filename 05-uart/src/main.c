@@ -7,42 +7,103 @@
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/uart.h>
 
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
-
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
 
 /*
  * A build error on this line means your board is unsupported.
  * See the sample documentation for information on how to fix this.
  */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
+
+
+const struct device *uart= DEVICE_DT_GET(DT_NODELABEL(uart0));
+
+/*
+* Uart definitions 
+ */
+#define RECEIVE_BUFF_SIZE 10
+static uint8_t rx_buf[RECEIVE_BUFF_SIZE] = {0};
+#define RECEIVE_TIMEOUT 100
+static void uart_cb(const struct device *dev, struct uart_event *evt, void *user_data);
+
+static uint8_t tx_buf[] =   {"nRF Connect SDK Training\r\n"
+                             "Press 1-3 on your keyboard to toggle LEDS 1-3 on the development kit\r\n"};
 
 int main(void)
 {
 	int ret;
-	bool led_state = true;
 
-	if (!gpio_is_ready_dt(&led)) {
+	if (!gpio_is_ready_dt(&led0) || !gpio_is_ready_dt(&led1) || !gpio_is_ready_dt(&led2)) {
 		return 0;
 	}
 
-	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (!device_is_ready(uart)){
+		printk("UART device not ready\r\n");
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led0, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+	
+	ret = gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		return 0;
 	}
 
-	while (1) {
-		ret = gpio_pin_toggle_dt(&led);
-		if (ret < 0) {
-			return 0;
-		}
+	ret = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
 
-		led_state = !led_state;
-		printf("LED state: %s\n", led_state ? "ON" : "OFF");
+	ret = uart_callback_set(uart, uart_cb, NULL);
+	if (ret) {
+		return 0;
+	}
+
+	ret = uart_tx(uart, tx_buf, sizeof(tx_buf), SYS_FOREVER_US);
+	if (ret) {
+		return 0;
+	}
+
+	ret = uart_rx_enable(uart , rx_buf, sizeof(rx_buf), RECEIVE_TIMEOUT);
+	if (ret) {
+		return 0;
+	}
+
+	while (1) {
 		k_msleep(SLEEP_TIME_MS);
 	}
 	return 0;
+}
+
+static void uart_cb(const struct device *dev, struct uart_event *evt, void *user_data)
+{
+	switch (evt->type) {
+
+	case UART_RX_RDY:
+		if ((evt->data.rx.len) == 1) {
+
+			if (evt->data.rx.buf[evt->data.rx.offset]        == '1') {
+				gpio_pin_toggle_dt(&led0);
+			} else if (evt->data.rx.buf[evt->data.rx.offset] == '2') {
+				gpio_pin_toggle_dt(&led1);
+			} else if (evt->data.rx.buf[evt->data.rx.offset] == '3') {
+				gpio_pin_toggle_dt(&led2);
+			}
+		}
+		break;
+	case UART_RX_DISABLED:
+		uart_rx_enable(dev, rx_buf, sizeof rx_buf, RECEIVE_TIMEOUT);
+		break;
+
+	default:
+		break;
+	}
 }
